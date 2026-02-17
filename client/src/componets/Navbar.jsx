@@ -34,12 +34,15 @@ function Navbar() {
             <a href="#contact" className="text-gray-600 hover:text-indigo-600 font-medium transition-colors">
               Contact
             </a>
-            <button 
-              onClick={() => setShowModal('login')}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-500/30 transition-all"
-            >
-              Get Started
-            </button>
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => setShowModal('login')}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-500/30 transition-all"
+              >
+                Get Started
+              </button>
+             
+            </div>
           </div>
         </div>
       </nav>

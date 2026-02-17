@@ -1,10 +1,8 @@
 const express = require("express");
-const http = require("http");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const http = require("http");
 const { Server } = require("socket.io");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 
 const app = express();
 app.use(cors());
@@ -16,126 +14,82 @@ const io = new Server(server, {
 });
 
 
-// ================== MONGODB CONNECT ==================
-mongoose.connect("mongodb://127.0.0.1:27017/docspace", {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log("MongoDB connected"))
+// =================== MONGODB ===================
+mongoose.connect("mongodb://127.0.0.1:27017/workspaceDB")
+.then(() => console.log("MongoDB Connected"))
 .catch(err => console.log(err));
 
 
-// ================== MODELS ==================
-const userSchema = new mongoose.Schema({
+// =================== SCHEMA ===================
+const workspaceSchema = new mongoose.Schema({
   name: String,
-  email: String,
-  password: String,
+  content: { type: String, default: "" },
+  createdAt: { type: Date, default: Date.now }
 });
 
-const documentSchema = new mongoose.Schema({
-  title: String,
-  content: String,
-  owner: String,
-  createdAt: { type: Date, default: Date.now },
-});
-
-const User = mongoose.model("User", userSchema);
-const Document = mongoose.model("Document", documentSchema);
+const Workspace = mongoose.model("Workspace", workspaceSchema);
 
 
-// ================== AUTH ==================
-
-// Register
-app.post("/register", async (req, res) => {
+// =================== CREATE WORKSPACE ===================
+app.post("/workspace/create", async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name } = req.body;
 
-    const hashed = await bcrypt.hash(password, 10);
+    const ws = new Workspace({ name });
+    await ws.save();
 
-    const user = new User({
-      name,
-      email,
-      password: hashed,
-    });
+    const all = await Workspace.find();
+    res.json({ ws, all });
 
-    await user.save();
-    res.json({ message: "User registered" });
   } catch (err) {
     res.status(500).json(err);
   }
 });
 
-// Login
-app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
 
-  const user = await User.findOne({ email });
-  if (!user) return res.status(400).json({ message: "User not found" });
-
-  const valid = await bcrypt.compare(password, user.password);
-  if (!valid) return res.status(400).json({ message: "Wrong password" });
-
-  const token = jwt.sign({ id: user._id }, "secret123");
-  res.json({ token, user });
+// =================== GET ALL WORKSPACES ===================
+app.get("/workspaces", async (req, res) => {
+  const all = await Workspace.find();
+  res.json(all);
 });
 
 
-// ================== DOCUMENT ROUTES ==================
-
-// Create new document
-app.post("/create", async (req, res) => {
-  const { title, content, owner } = req.body;
-
-  const doc = new Document({
-    title,
-    content,
-    owner,
-  });
-
-  await doc.save();
-  res.json({ message: "Document created", doc });
+// =================== GET SINGLE WORKSPACE ===================
+app.get("/workspace/:id", async (req, res) => {
+  const ws = await Workspace.findById(req.params.id);
+  res.json(ws);
 });
 
-// Save document (update)
-app.post("/save/:id", async (req, res) => {
+
+// =================== SAVE WORKSPACE CONTENT ===================
+app.post("/workspace/save/:id", async (req, res) => {
   const { content } = req.body;
 
-  await Document.findByIdAndUpdate(req.params.id, {
-    content: content,
+  await Workspace.findByIdAndUpdate(req.params.id, {
+    content: content
   });
 
-  res.json({ message: "Document saved" });
-});
-
-// Get all my documents
-app.get("/mydocs/:email", async (req, res) => {
-  const docs = await Document.find({ owner: req.params.email });
-  res.json(docs);
-});
-
-// Get single document
-app.get("/doc/:id", async (req, res) => {
-  const doc = await Document.findById(req.params.id);
-  res.json(doc);
-});
-
-// Delete document
-app.delete("/delete/:id", async (req, res) => {
-  await Document.findByIdAndDelete(req.params.id);
-  res.json({ message: "Deleted" });
+  res.json({ message: "Saved successfully" });
 });
 
 
-// ================== SOCKET.IO REALTIME ==================
+// =================== SOCKET REALTIME ===================
 io.on("connection", (socket) => {
   console.log("User connected");
 
-  socket.on("join-document", (docId) => {
-    socket.join(docId);
+  // workspace list realtime
+  socket.on("workspace-change", (data) => {
+    socket.broadcast.emit("workspace-updated", data);
   });
 
-  socket.on("send-changes", ({ docId, content }) => {
-    socket.to(docId).emit("receive-changes", content);
+  // join workspace room
+  socket.on("join-workspace", (id) => {
+    socket.join(id);
+  });
+
+  // realtime typing
+  socket.on("send-changes", ({ id, content }) => {
+    socket.to(id).emit("receive-changes", content);
   });
 
   socket.on("disconnect", () => {
@@ -144,6 +98,8 @@ io.on("connection", (socket) => {
 });
 
 
-// ================== START SERVER ==================
+// =================== SERVER ===================
 const PORT = 5000;
-server.listen(PORT, () => console.log("Server running on port " + PORT));
+server.listen(PORT, () => {
+  console.log("Server running on port " + PORT);
+});

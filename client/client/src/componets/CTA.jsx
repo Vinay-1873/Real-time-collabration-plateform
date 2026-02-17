@@ -8,9 +8,11 @@ function CTA() {
           Ready to Transform Your Collaboration?
         </h2>
         <p className="text-xl opacity-90">
-          Join thousands of teams already using DocSpace
+          Join thousands of teams already using CollabSpace
         </p>
-      
+        <button className="bg-white text-indigo-600 px-8 py-4 rounded-lg text-lg font-semibold hover:-translate-y-0.5 hover:shadow-2xl transition-all">
+          Get Started Free
+        </button>
       </div>
     </section>
   );
