@@ -1,10 +1,11 @@
 import React from 'react';
-import Navbar from '../componets/Navbar';
-import Hero from '../componets/Hero';
-import Features from '../componets/Features';
-import About from '../componets/About';
-import CTA from '../componets/CTA';
-import Footer from '../componets/Footer';
+import Navbar from '../components/Navbar';
+import Hero from '../components/Hero';
+import Features from '../components/Features';
+import About from '../components/About';
+import TestimonialSection from '../components/TestimonialSection';
+import NewsletterSection from '../Newsletter';
+import Footer from '../components/Footer';
 
 function LandingPage() {
   return (
@@ -13,7 +14,8 @@ function LandingPage() {
       <Hero />
       <Features />
       <About />
-      <CTA />
+      <TestimonialSection/>
+       <NewsletterSection />
       <Footer />
     </div>
   );
