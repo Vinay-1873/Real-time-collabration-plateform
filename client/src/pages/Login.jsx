@@ -12,10 +12,9 @@ const Login = () => {
   const navigate = useNavigate();
 
   // Redirect if already authenticated
-  if (isAuthenticated) {
-    navigate('/dashboard');
-    return null;
-  }
+if (isAuthenticated) {
+  navigate('/dashboard');
+}
 
   const handleSubmit = async (e) => {
     e.preventDefault();

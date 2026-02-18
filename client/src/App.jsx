@@ -1,3 +1,21 @@
+<<<<<<< HEAD
+import Navbar from './components/Navbar'
+
+import './App.css'
+
+function App() {
+
+
+  return (
+    <>
+      <header className="app-header">
+        <Navbar />
+      </header>
+     
+     
+    </>
+  )
+=======
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -35,6 +53,7 @@ function App() {
       </AuthProvider>
     </Router>
   );
+>>>>>>> a1be8367d7699d8bbc9648f6cef0ce706e5f5b7b
 }
 
 export default App;
