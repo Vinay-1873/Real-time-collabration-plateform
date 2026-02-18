@@ -49,9 +49,15 @@ export const createDocument = async (req, res) => {
 // @access  Private
 export const getUserDocuments = async (req, res) => {
   try {
-    // DEVELOPMENT MODE: Show ALL documents in database
-    // TODO: In production, restrict to user's own documents
-    const documents = await Document.find({})
+    const userId = req.user._id;
+
+    // Get documents where user is owner OR collaborator
+    const documents = await Document.find({
+      $or: [
+        { ownerId: userId },           // Documents owned by user
+        { collaborators: userId }      // Documents where user is a collaborator
+      ]
+    })
       .populate('ownerId', 'name email')
       .populate('collaborators', 'name email')
       .sort({ updatedAt: -1 });
@@ -95,18 +101,13 @@ export const getDocumentById = async (req, res) => {
       });
     }
 
-    // DEVELOPMENT MODE: Allow access to all documents
-    // TODO: In production, re-enable access control
-    // if (!document.hasAccess(req.user._id)) {
-    //   console.log('Access denied for user:', req.user._id.toString());
-    //   console.log('Document owner:', document.ownerId._id?.toString() || document.ownerId?.toString());
-    //   console.log('Document collaborators:', document.collaborators.map(c => c._id?.toString() || c?.toString()));
-    //   
-    //   return res.status(403).json({
-    //     success: false,
-    //     message: 'Access denied. You do not have permission to view this document.'
-    //   });
-    // }
+    // Check access permission - user must be owner or collaborator
+    if (!document.hasAccess(req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You do not have permission to view this document.'
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -153,9 +154,6 @@ export const updateDocument = async (req, res) => {
         message: 'Access denied. You do not have permission to edit this document.'
       });
     }
-
-    // DEVELOPMENT MODE: Allow anyone to update
-    // TODO: Re-enable access control in production
 
     // Update fields
     if (title !== undefined) {

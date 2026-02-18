@@ -3,7 +3,8 @@ import User from '../models/User.js';
 import Document from '../models/Document.js';
 import Version from '../models/Version.js';
 
-// Store active connections per document
+// Store active connections per document - maps docId to Set of socket IDs
+// Each socket carries userId and userName for proper user tracking
 const documentConnections = new Map();
 
 export const setupDocumentSocket = (io) => {
@@ -60,20 +61,40 @@ export const setupDocumentSocket = (io) => {
         socket.join(docId);
         socket.currentDocId = docId;
 
-        // Track connection
+        // Track connection by socket ID (allows multiple connections per user)
         if (!documentConnections.has(docId)) {
-          documentConnections.set(docId, new Set());
+          documentConnections.set(docId, new Map());
         }
-        documentConnections.get(docId).add(socket.userId);
-
-        // Notify others about new user
-        const activeUsers = Array.from(documentConnections.get(docId));
-        io.to(docId).emit('users-update', {
-          count: activeUsers.length,
-          users: activeUsers
+        
+        const connections = documentConnections.get(docId);
+        // Store each socket with user info
+        connections.set(socket.id, {
+          userId: socket.userId,
+          userName: socket.userName
         });
 
-        console.log(`📄 User ${socket.userName} joined document ${docId}`);
+        // Get unique active users and total connections
+        const uniqueUsers = new Set();
+        const usersList = [];
+        
+        connections.forEach((userInfo, socketId) => {
+          uniqueUsers.add(userInfo.userId);
+          if (!usersList.find(u => u.id === userInfo.userId)) {
+            usersList.push({
+              id: userInfo.userId,
+              name: userInfo.userName
+            });
+          }
+        });
+
+        // Notify all users (including sender) about active users
+        io.to(docId).emit('users-update', {
+          count: uniqueUsers.size,
+          users: usersList,
+          totalConnections: connections.size
+        });
+
+        console.log(`📄 User ${socket.userName} joined document ${docId} (Total unique users: ${uniqueUsers.size})`);
       } catch (error) {
         console.error('Join document error:', error);
         socket.emit('error', { message: 'Error joining document' });
@@ -171,22 +192,38 @@ export const setupDocumentSocket = (io) => {
         if (socket.currentDocId) {
           const docId = socket.currentDocId;
           
-          // Remove from active connections
+          // Remove socket connection
           if (documentConnections.has(docId)) {
-            documentConnections.get(docId).delete(socket.userId);
+            const connections = documentConnections.get(docId);
+            connections.delete(socket.id);
             
-            const activeUsers = Array.from(documentConnections.get(docId));
+            // Get unique active users and total connections
+            const uniqueUsers = new Set();
+            const usersList = [];
             
-            // Clean up empty sets
-            if (activeUsers.length === 0) {
+            connections.forEach((userInfo, socketId) => {
+              uniqueUsers.add(userInfo.userId);
+              if (!usersList.find(u => u.id === userInfo.userId)) {
+                usersList.push({
+                  id: userInfo.userId,
+                  name: userInfo.userName
+                });
+              }
+            });
+            
+            // Clean up empty maps
+            if (connections.size === 0) {
               documentConnections.delete(docId);
             }
 
-            // Notify remaining users
+            // Notify remaining users about updated user list
             io.to(docId).emit('users-update', {
-              count: activeUsers.length,
-              users: activeUsers
+              count: uniqueUsers.size,
+              users: usersList,
+              totalConnections: connections.size
             });
+
+            console.log(`📄 User disconnected from document ${docId} (Remaining unique users: ${uniqueUsers.size})`);
           }
         }
       } catch (error) {
